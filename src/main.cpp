@@ -1,59 +1,55 @@
-#include <TinyGsmClient.h>
-#include <WiFiUdp.h>
-#include <CoAP.h>
+#include <Arduino.h>
+#include <WiFi.h>
+#include <coap-simple.h>
 #include "config.h"
+// CoAP Server settings
+const int coapPort = 5683; // Default CoAP port
 
-#define MODEM_RST         5
-#define MODEM_PWKEY       4
-#define MODEM_POWER_ON    23
-#define MODEM_TX          27
-#define MODEM_RX          26
+// CoAP client instance
+WiFiUDP udp;
+Coap coap(udp);
 
-#define COAP_PORT         5683
-#define COAP_RESOURCE     "/locations"
-
-TinyGsm modem(Serial1);
-TinyGsmClient client(modem);
-WiFiUDP Udp;
-Coap coap(Udp);
+uint16_t messageID = 0;
 
 void setup() {
-  // Start Serial for debug purposes
-  Serial.begin(115200);
-  delay(10);
+    // Start serial
+    Serial.begin(115200);
 
-  // Set the pins
-  pinMode(MODEM_PWKEY, OUTPUT);
-  pinMode(MODEM_RST, OUTPUT);
-  pinMode(MODEM_POWER_ON, OUTPUT);
+    // Connect to WiFi
+    WiFi.begin(WIFI_SSID, WIFI_PASS);
+    while (WiFi.status() != WL_CONNECTED) {
+        delay(1000);
+        Serial.println("Connecting to WiFi...");
+    }
+    Serial.println("Connected to WiFi");
 
-  // Restart takes quite some time
-  modem.restart();
-  
-  // Initialize CoAP client
-  coap.start();
-
-  // Connect to the WiFi
-  WiFi.begin(WIFI_SSID, WIFI_PASS);
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(1000);
-    Serial.println("Connecting to WiFi...");
-  }
-  Serial.println("Connected to WiFi!");
+    // Start CoAP client
+    coap.start();
 }
 
 void loop() {
-  // Mock values for IMEI, latitude, and longitude
-  String imei = "123456789012345";
-  String lat = "12.34567";
-  String lon = "89.01234";
+    // Create JSON with dummy values
+    String jsonData = "{\"imei\":\"123456789\",\"latitude\":50.1109,\"longitude\":8.6821}";
 
-  // Create JSON message
-  String jsonMessage = "{\"imei\":\"" + imei + "\",\"latitude\":\"" + lat + "\",\"longitude\":\"" + lon + "\"}";
+    // Convert JSON string to char array
+    char payload[jsonData.length() + 1];
+    jsonData.toCharArray(payload, sizeof(payload));
 
-  // Send the JSON message via CoAP
-  coap.post(COAP_SERVER, COAP_PORT, COAP_RESOURCE, jsonMessage.c_str());
-
-  delay(1000);  // Send message every second
+    // Send CoAP POST request
+    // coap.sendToUri(payload, strlen(payload), COAP_SERVER, coapPort, "locations");
+    coap.send(
+        IPAddress(coapServerIP), 
+        coapPort, 
+        "locations",
+        COAP_NONCON,
+        COAP_POST,
+        NULL, // token
+        0,    // token length
+        (uint8_t *)payload, 
+        jsonData.length(),
+        COAP_CONTENT_TYPE::COAP_NONE,
+        messageID++);
+    Serial.println("sended package...");
+    // Wait before sending again
+    delay(1000);
 }
-
