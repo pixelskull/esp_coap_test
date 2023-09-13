@@ -36,8 +36,6 @@ void loop() {
   jsonData.toCharArray(payload, sizeof(payload));
 
   // Send CoAP POST request
-  // coap.sendToUri(payload, strlen(payload), COAP_SERVER, coapPort,
-  // "locations");
   coap.send(IPAddress(coapServerIP), coapPort, "locations", COAP_NONCON,
             COAP_POST,
             NULL, // token
@@ -45,6 +43,7 @@ void loop() {
             (uint8_t *)payload, jsonData.length(), COAP_CONTENT_TYPE::COAP_NONE,
             messageID++);
   Serial.println("sended package...");
+
   // Wait before sending again
   delay(1000);
 }
